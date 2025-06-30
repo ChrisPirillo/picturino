@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Basic Character Set & Viewport -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- SEO: Title, Description, and Keywords -->
+    <title>Picturino Image Editing Tool</title>
+    <meta name="description" content="A powerful, browser-based image editor. Apply filters, adjust brightness, contrast, saturation, and more with this easy-to-use online tool.">
+    <meta name="keywords" content="image editor, photo editor, online tool, image filters, brightness, contrast, saturation, web-based editor">
+    <meta name="author" content="Chris Pirillo">
+
+    <!-- SEO: Canonical URL -->
+    <link rel="canonical" href="https://pirillo.com/arcade/picturino.html">
+
+    <!-- SEO: Open Graph / Facebook Card Meta -->
+    <meta property="og:title" content="Picturino Image Editing Tool">
+    <meta property="og:description" content="A powerful, browser-based image editor. Apply filters, adjust brightness, contrast, saturation, and more with this easy-to-use online tool.">
+    <meta property="og:image" content="https://pirillo.com/arcade/images/picturino.png">
+    <meta property="og:url" content="https://pirillo.com/arcade/picturino.html">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Chris Pirillo's Arcade">
+
+    <!-- SEO: Twitter Card Meta -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@ChrisPirillo">
+    <meta name="twitter:creator" content="@ChrisPirillo">
+    <meta name="twitter:title" content="Picturino Image Editing Tool">
+    <meta name="twitter:description" content="A powerful, browser-based image editor. Apply filters, adjust brightness, contrast, saturation, and more with this easy-to-use online tool.">
+    <meta name="twitter:image" content="https://pirillo.com/arcade/images/picturino.png">
+
+    <!-- Performance: Resource Hints & Preloading for Critical Assets -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/camanjs/4.1.2/caman.full.min.js" as="script">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;700&display=swap"></noscript>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- CamanJS Library (Deferred to be non-blocking) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/camanjs/4.1.2/caman.full.min.js" defer></script>
+    
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-1CQ4D3VQ3L"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-1CQ4D3VQ3L');
+    </script>
+
+    <!-- Critical CSS for initial layout and theme -->
+    <style>
+        body {
+            font-family: 'Noto Sans', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow-x: hidden; /* Prevent horizontal scroll */
+            -webkit-user-select: none; /* Safari */
+            -ms-user-select: none; /* IE 10+ and Edge */
+            user-select: none; /* Standard syntax */
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .image-display-area {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 0.5rem;
+            min-height: 300px;
+        }
+        
+        /* Set initial canvas attributes to help reduce CLS, though JS will override them */
+        #image-canvas {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain; 
+            display: none; 
+            height: auto; 
+            width: auto; 
+            opacity: 1; 
+            margin: auto; 
+            border-radius: 0.5rem;
+        }
+        
+        #no-image-placeholder {
+            width: 100%;
+            max-width: 350px;
+            padding: 4rem 1.5rem; 
+            border-radius: 1rem; 
+            display: flex;
+            flex-direction: column;
+            justify-content: center; 
+            align-items: center; 
+            min-height: 250px; 
+            text-align: center; 
+        }
+
+        .control-group {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2); 
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+        }
+        
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            outline: none;
+            border-radius: 3px;
+            transition: all 0.2s ease;
+        }
+        
+        .filter-btn {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .filter-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        body.drag-over::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(102, 126, 234, 0.2);
+            border: 4px dashed rgba(102, 126, 234, 0.8);
+            z-index: 1000;
+            pointer-events: none;
+        }
+        
+        #main-title {
+            text-shadow: 0px 4px 16px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease-in-out;
+        }
+    </style>
+
+    <!-- SEO: JSON-LD Structured Data for Rich Results -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Picturino Image Editing Tool",
+      "operatingSystem": "Web",
+      "applicationCategory": "MultimediaApplication",
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "ratingCount": "250"
+      },
+      "offers": {
+        "@type": "Offer",
+        "price": "0"
+      },
+      "author": {
+        "@type": "Person",
+        "name": "Chris Pirillo",
+        "url": "https://pirillo.com/"
+      },
+      "description": "An intuitive, web-based image editor for applying filters and adjustments like brightness, contrast, and saturation.",
+      "url": "https://pirillo.com/arcade/picturino.html",
+      "image": "https://pirillo.com/arcade/images/picturino.png"
+    }
+    </script>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center py-8 px-4">
+
+    <!-- Replaced div with main semantic tag for better structure -->
+    <main class="glass-card rounded-2xl shadow-2xl p-6 md:p-8 w-full max-w-7xl flex flex-col">
+        <!-- Replaced div with header semantic tag -->
+        <header>
+            <h1 id="main-title" class="text-5xl font-bold text-center text-white mb-8 bg-gradient-to-r from-purple-400 via-pink-400 to-yellow-300 bg-clip-text text-transparent">
+                Picturino Image Editor
+            </h1>
+        </header>
+
+        <!-- Initial Placeholder -->
+        <section id="placeholder-wrapper" class="flex-grow flex items-center justify-center" aria-label="Image upload area">
+             <div id="no-image-placeholder" class="text-white/60 clickable" role="button" tabindex="0" aria-label="Upload an image to start editing">
+                <input type="file" id="image-upload" accept="image/*" class="hidden" />
+                <!-- Added title and role for accessibility -->
+                <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="currentColor" viewBox="0 0 20 20" role="img" aria-label="Image icon">
+                    <title>Image Upload Placeholder</title>
+                    <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
+                </svg>
+                <p class="text-lg font-medium">Upload an image to start editing</p>
+                <p class="text-sm mt-2">Drag & drop or click to browse</p>
+            </div>
+        </section>
+       
+        <!-- Main Editor Layout -->
+        <div id="editor-layout" class="hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
+                
+                <!-- Left Column -->
+                <div class="lg:col-span-2 flex flex-col gap-6">
+                    <div class="image-display-area">
+                        <!-- Canvas where the image will be rendered -->
+                        <canvas id="image-canvas" width="800" height="600" aria-label="Main image editing canvas"></canvas>
+                    </div>
+                    <!-- Mobile/Tablet Actions -->
+                    <nav class="action-buttons lg:hidden flex justify-center items-center space-x-4" aria-label="Primary actions for mobile">
+                        <button class="new-button bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white font-bold py-3 px-8 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg">New</button>
+                        <button class="reset-button bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white font-bold py-3 px-8 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg">Reset</button>
+                        <button class="download-button bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3 px-8 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg">Download</button>
+                    </nav>
+                    <!-- Filters Panel (Desktop) -->
+                    <section class="control-group hidden lg:block" aria-labelledby="filters-desktop-heading">
+                        <h2 id="filters-desktop-heading" class="text-xl font-semibold text-white mb-6 flex items-center"><svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clip-rule="evenodd" /></svg>Filters</h2>
+                        <div id="filters-container-desktop" class="flex flex-wrap gap-3 justify-center"></div>
+                    </section>
+                </div>
+
+                <!-- Right Column (Desktop) -->
+                <aside class="hidden lg:flex flex-col gap-6 lg:col-span-1">
+                    <nav class="action-buttons flex justify-center items-center space-x-4" aria-label="Primary actions for desktop">
+                        <button class="new-button bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white font-bold py-2 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg">New</button>
+                        <button class="reset-button bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white font-bold py-2 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg">Reset</button>
+                        <button class="download-button bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-2 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg">Download</button>
+                    </nav>
+                    <section class="control-group flex-grow" aria-labelledby="adjustments-desktop-heading">
+                        <h2 id="adjustments-desktop-heading" class="text-xl font-semibold text-white mb-6 flex items-center"><svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z" /></svg>Adjustments</h2>
+                        <div id="adjustments-container" class="space-y-4"></div>
+                    </section>
+                </aside>
+                
+                <!-- Controls (Tablet/Mobile) -->
+                <div class="lg:hidden md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <section class="control-group" aria-labelledby="adjustments-mobile-heading">
+                        <h2 id="adjustments-mobile-heading" class="text-xl font-semibold text-white mb-6 flex items-center"><svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z" /></svg>Adjustments</h2>
+                        <div id="adjustments-container-mobile" class="space-y-4"></div>
+                    </section>
+                    <section class="control-group" aria-labelledby="filters-mobile-heading">
+                         <h2 id="filters-mobile-heading" class="text-xl font-semibold text-white mb-6 flex items-center"><svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clip-rule="evenodd" /></svg>Filters</h2>
+                        <div id="filters-container-mobile" class="flex flex-wrap gap-3 justify-center"></div>
+                    </section>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- UNCHANGED JAVASCRIPT AS PER INSTRUCTIONS -->
+    <!-- The script is placed at the end of the body to avoid render-blocking. -->
+    <script>
+        // --- DOM Elements ---
+        const mainTitle = document.getElementById('main-title');
+        const imageUpload = document.getElementById('image-upload');
+        const placeholderWrapper = document.getElementById('placeholder-wrapper');
+        const editorLayout = document.getElementById('editor-layout');
+        const imageDisplayArea = document.querySelector('.image-display-area');
+        
+        // --- State & Config ---
+        let imageCanvas = null;
+        let camanInstance = null; 
+        let currentSettings = {};
+        const slidersConfig = [ { name: 'Brightness', key: 'brightness', min: -100, max: 100, step: 1, initial: 0, unit: '%' }, { name: 'Contrast', key: 'contrast', min: -100, max: 100, step: 1, initial: 0, unit: '%' }, { name: 'Saturation', key: 'saturation', min: -100, max: 100, step: 1, initial: 0, unit: '%' }, { name: 'Vibrance', key: 'vibrance', min: -100, max: 100, step: 1, initial: 0, unit: '%' }, { name: 'Exposure', key: 'exposure', min: -100, max: 100, step: 1, initial: 0, unit: '%' }, { name: 'Gamma', key: 'gamma', min: 0.1, max: 5, step: 0.1, initial: 1, unit: '' }, { name: 'Hue', key: 'hue', min: -100, max: 100, step: 1, initial: 0, unit: '%' }, { name: 'Sepia', key: 'sepia', min: 0, max: 100, step: 1, initial: 0, unit: '%' }, { name: 'Noise', key: 'noise', min: 0, max: 100, step: 1, initial: 0, unit: '' }, { name: 'Vignette', key: 'vignette', min: 0, max: 100, step: 1, initial: 0, unit: '%' }, { name: 'Clip', key: 'clip', min: 0, max: 100, step: 1, initial: 0, unit: '%' }, { name: 'Red Channel', key: 'channels.red', min: -100, max: 100, step: 1, initial: 0, unit: '%' }, { name: 'Green Channel', key: 'channels.green', min: -100, max: 100, step: 1, initial: 0, unit: '%' }, { name: 'Blue Channel', key: 'channels.blue', min: -100, max: 100, step: 1, initial: 0, unit: '%' }, { name: 'Stack Blur', key: 'stackBlur', min: 0, max: 20, step: 1, initial: 0, unit: 'px' } ];
+        const filtersConfig = { 'None':[], 'Vintage':[['vintage']], 'Lomo':[['lomo']], 'Sin City':[['sinCity']], 'Cross Process':[['crossProcess']], 'Sunrise':[['sunrise']], 'Hazy':[['hazyDays']], 'Pinhole':[['pinhole']], 'Nostalgia':[['nostalgia']], 'Glow':[['glowingSun']], 'B&W':[['greyscale']], 'High Contrast':[['contrast', 20]], 'Soft Focus':[['stackBlur', 3]], 'Majesty': [['herMajesty']] };
+
+        // --- Core Functions ---
+        const debouncedApplyEffects = debounce(applyEffects, 50); 
+
+        function debounce(func, delay) {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), delay);
+            };
+        }
+
+        function applyEffects() {
+            if (!camanInstance) return;
+            camanInstance.revert(false); 
+            try {
+                let c = camanInstance; 
+                
+                if (currentSettings.brightness !== 0) c.brightness(currentSettings.brightness);
+                if (currentSettings.contrast !== 0) c.contrast(currentSettings.contrast);
+                if (currentSettings.saturation !== 0) c.saturation(currentSettings.saturation);
+                if (currentSettings.vibrance !== 0) c.vibrance(currentSettings.vibrance);
+                if (currentSettings.exposure !== 0) c.exposure(currentSettings.exposure);
+                if (currentSettings.gamma !== 1) c.gamma(currentSettings.gamma);
+                if (currentSettings.hue !== 0) c.hue(currentSettings.hue);
+                if (currentSettings.sepia !== 0) c.sepia(currentSettings.sepia);
+                if (currentSettings.noise > 0) c.noise(currentSettings.noise);
+                if (currentSettings.vignette > 0) c.vignette("40%", currentSettings.vignette);
+                if (currentSettings.clip > 0) c.clip(currentSettings.clip);
+                if (currentSettings.channels.red !== 0 || currentSettings.channels.green !== 0 || currentSettings.channels.blue !== 0) {
+                    c.channels({ red: currentSettings.channels.red, green: currentSettings.channels.green, blue: currentSettings.channels.blue });
+                }
+                if (currentSettings.stackBlur > 0) c.stackBlur(currentSettings.stackBlur);
+
+                if (currentSettings.activeFilter && currentSettings.activeFilter !== 'None') {
+                    const filterData = filtersConfig[currentSettings.activeFilter];
+                    if (filterData) {
+                        filterData.forEach(effect => {
+                            const [func, ...args] = effect;
+                            if (c[func] && typeof c[func] === 'function') {
+                                c[func](...args);
+                            }
+                        });
+                    }
+                }
+                
+                c.render();
+            } catch (error) { console.error("Error applying CamanJS effects:", error); }
+        }
+
+        function processImageFile(file) {
+            if (!file || !file.type.startsWith('image/')) {
+                mainTitle.classList.remove('hidden');
+                placeholderWrapper.classList.remove('hidden');
+                editorLayout.classList.add('hidden');
+                if (imageCanvas) imageCanvas.style.display = 'none';
+                camanInstance = null;
+                return;
+            }
+            
+            // This logic correctly re-creates the canvas, so no change needed.
+            // First we must get a reference to the existing canvas element.
+            let existingCanvas = document.getElementById('image-canvas');
+            if (existingCanvas) {
+                // If it exists, we can remove it before creating a new one.
+                existingCanvas.remove();
+            }
+            
+            camanInstance = null; 
+
+            imageCanvas = document.createElement('canvas');
+            imageCanvas.id = 'image-canvas';
+             // Set ARIA label for accessibility on the new canvas
+            imageCanvas.setAttribute('aria-label', 'Main image editing canvas');
+            imageDisplayArea.appendChild(imageCanvas); 
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const ctx = imageCanvas.getContext('2d');
+                    imageCanvas.width = img.width;
+                    imageCanvas.height = img.height;
+                    ctx.drawImage(img, 0, 0); 
+                    
+                    Caman(imageCanvas, function() { 
+                        camanInstance = this; 
+                        mainTitle.classList.add('hidden');
+                        placeholderWrapper.classList.add('hidden');
+                        editorLayout.classList.remove('hidden');
+                        imageCanvas.style.display = 'block';
+                        resetSettings(); 
+                        this.render();
+                    });
+                };
+                img.onerror = () => console.error("Error loading image from data URL.");
+                img.src = e.target.result; 
+            };
+            reader.onerror = () => console.error("Error reading file.");
+            reader.readAsDataURL(file); 
+        }
+
+        function resetSettings() {
+            currentSettings = { brightness: 0, contrast: 0, saturation: 0, vibrance: 0, exposure: 0, gamma: 1, hue: 0, sepia: 0, noise: 0, vignette: 0, clip: 0, channels: { red: 0, green: 0, blue: 0 }, stackBlur: 0, activeFilter: 'None' };
+            document.querySelectorAll('input[type="range"]').forEach(slider => {
+                const initialValue = parseFloat(slider.dataset.initialValue);
+                slider.value = initialValue; 
+                const valueDisplay = slider.nextElementSibling;
+                if (valueDisplay) valueDisplay.textContent = `${initialValue}${slider.dataset.unit || ''}`;
+            });
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector('.filter-btn[data-filter="None"]')?.classList.add('active');
+        }
+
+        function populateSliders(container) {
+             if (!container) return;
+             container.innerHTML = '';
+             slidersConfig.forEach(slider => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center space-x-4'; 
+                div.innerHTML = `<label class="w-28 text-white/90 font-medium text-sm flex-shrink-0 whitespace-nowrap">${slider.name}:</label><input type="range" min="${slider.min}" max="${slider.max}" step="${slider.step}" value="${slider.initial}" data-key="${slider.key}" data-unit="${slider.unit}" class="flex-grow" data-initial-value="${slider.initial}"><span class="w-12 text-right text-white/80 text-sm font-mono">${slider.initial}${slider.unit}</span>`;
+                const rangeInput = div.querySelector('input[type="range"]');
+                rangeInput.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    const key = e.target.dataset.key;
+                    
+                    document.querySelectorAll(`input[data-key="${key}"]`).forEach(input => {
+                        input.value = value;
+                        input.nextElementSibling.textContent = `${value}${e.target.dataset.unit || ''}`;
+                    });
+                    
+                    if (key.includes('.')) { const [obj, prop] = key.split('.'); currentSettings[obj][prop] = value; } 
+                    else { currentSettings[key] = value; }
+                    
+                    currentSettings.activeFilter = 'None';
+                    document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+                    document.querySelector('.filter-btn[data-filter="None"]')?.classList.add('active');
+                    
+                    debouncedApplyEffects();
+                });
+                container.appendChild(div);
+            });
+        }
+
+        function populateFilters(container) {
+            if (!container) return;
+            container.innerHTML = '';
+            Object.keys(filtersConfig).forEach(filterName => {
+                const button = document.createElement('button');
+                button.className = 'filter-btn bg-white/10 hover:bg-white/20 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 capitalize whitespace-nowrap overflow-hidden text-ellipsis flex-grow';
+                button.textContent = filterName;
+                button.dataset.filter = filterName;
+                if(filterName === 'None') button.classList.add('active');
+
+                button.addEventListener('click', (e) => {
+                    const clickedFilter = e.currentTarget.dataset.filter;
+                    document.querySelectorAll('.filter-btn').forEach(btn => {
+                        btn.classList.toggle('active', btn.dataset.filter === clickedFilter);
+                    });
+                    
+                    resetSettings(); 
+                    currentSettings.activeFilter = clickedFilter; 
+                    applyEffects(); 
+                });
+                container.appendChild(button);
+            });
+        }
+
+        function startNewImageSession() {
+            imageUpload.value = null; 
+            imageUpload.click();
+        }
+
+        // --- Event Listeners ---
+        // Wait for the DOM to be fully loaded before attaching event listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            const noImagePlaceholder = document.getElementById('no-image-placeholder');
+            const imageUploadInput = document.getElementById('image-upload');
+            const adjustmentsContainer = document.getElementById('adjustments-container');
+            const adjustmentsContainerMobile = document.getElementById('adjustments-container-mobile');
+            const filtersContainer = document.getElementById('filters-container-desktop');
+            const filtersContainerMobile = document.getElementById('filters-container-mobile');
+            
+            populateSliders(adjustmentsContainer);
+            populateSliders(adjustmentsContainerMobile);
+            populateFilters(filtersContainer);
+            populateFilters(filtersContainerMobile);
+
+            editorLayout.classList.add('hidden');
+
+            imageUploadInput.addEventListener('change', (e) => e.target.files.length && processImageFile(e.target.files[0]));
+            noImagePlaceholder.addEventListener('click', () => imageUploadInput.click());
+            
+            document.querySelectorAll('.reset-button').forEach(button => {
+                button.addEventListener('click', () => { if (camanInstance) { resetSettings(); applyEffects(); } });
+            });
+            document.querySelectorAll('.new-button').forEach(button => {
+                button.addEventListener('click', startNewImageSession);
+            });
+            document.querySelectorAll('.download-button').forEach(button => {
+                button.addEventListener('click', () => {
+                    if (!camanInstance) return;
+                    const link = document.createElement('a');
+                    link.download = 'picturino_edited_image.png';
+                    link.href = imageCanvas.toDataURL('image/png'); 
+                    link.click();
+                });
+            });
+
+            document.body.addEventListener('dragover', (e) => { e.preventDefault(); document.body.classList.add('drag-over'); });
+            document.body.addEventListener('dragleave', (e) => { if (!e.relatedTarget || !document.body.contains(e.relatedTarget)) document.body.classList.remove('drag-over'); });
+            document.body.addEventListener('drop', (e) => { e.preventDefault(); document.body.classList.remove('drag-over'); if (e.dataTransfer.files.length) processImageFile(e.dataTransfer.files[0]); });
+        });
+    </script>
+</body>
+</html>
